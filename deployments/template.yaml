@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: POC Vision API - Provider Identification using Multimodal Models
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  CatalogApiToken:
+    Type: String
+    Default: "poc-vision-api-token-2026"
+    Description: Token para acceso API catalogo
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+    Description: ID del modelo multimodal de Bedrock (Nova Lite - rapido y economico)
+
+  AIProvider:
+    Type: String
+    Default: "bedrock"
+    AllowedValues:
+      - bedrock
+      - openai
+      - anthropic
+      - google
+    Description: Proveedor de IA a utilizar
+
+  AIApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: API Key para proveedores externos (OpenAI, Anthropic, Google)
+
+Globals:
+  Function:
+    Runtime: provided.al2
+    Timeout: 120
+    MemorySize: 1024
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+
+  ResultsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "poc-vision-api-results-${Environment}"
+      AttributeDefinitions:
+        - AttributeName: RequestID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: RequestID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  VisionApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "poc-vision-api-${Environment}"
+      StageName: Prod
+      Auth:
+        ApiKeyRequired: true
+      BinaryMediaTypes:
+        - "multipart/form-data"
+        - "image/jpeg"
+        - "image/png"
+        - "image/gif"
+        - "image/webp"
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,x-api-key'"
+        AllowMethods: "'POST,OPTIONS'"
+
+  VisionApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: VisionApiProdStage
+    Properties:
+      UsagePlanName: !Sub "poc-vision-api-usage-plan-${Environment}"
+      Description: !Sub "Usage plan for POC Vision API - ${Environment}"
+      Quota:
+        Limit: 1000
+        Period: DAY
+      Throttle:
+        BurstLimit: 50
+        RateLimit: 25
+      ApiStages:
+        - ApiId: !Ref VisionApi
+          Stage: Prod
+
+  VisionApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub "poc-vision-api-key-${Environment}"
+      Description: !Sub "API Key for POC Vision API - ${Environment}"
+      Enabled: true
+      Value: !Ref CatalogApiToken
+
+  ApiKeyUsagePlanAssociation:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref VisionApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref VisionApiUsagePlan
+
+  VisionAnalysisFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: MCPServerFunction
+    Properties:
+      FunctionName: !Sub "poc-vision-api-${Environment}-analysis"
+      CodeUri: ../build/main-lambda.zip
+      Handler: bootstrap
+      Timeout: 180
+      MemorySize: 2048
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref ResultsTable
+          MCP_SERVER_FUNCTION_NAME: !Sub "poc-vision-api-${Environment}-mcp-server"
+          AI_PROVIDER: !Ref AIProvider
+          AI_MODEL: !Ref BedrockModelId
+          AI_API_KEY: !Ref AIApiKey
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          OPENAI_API_KEY: !Ref AIApiKey
+          ANTHROPIC_API_KEY: !Ref AIApiKey
+          GOOGLE_API_KEY: !Ref AIApiKey
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:Converse
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - aws-marketplace:ViewSubscriptions
+                - aws-marketplace:Subscribe
+                - aws-marketplace:Unsubscribe
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+              Resource: !GetAtt ResultsTable.Arn
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:poc-vision-api-${Environment}-mcp-server"
+      Events:
+        AnalyzeImage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref VisionApi
+            Path: /analyze
+            Method: POST
+            Auth:
+              ApiKeyRequired: true
+
+  MCPServerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "poc-vision-api-${Environment}-mcp-server"
+      CodeUri: ../build/mcp-server.zip
+      Handler: bootstrap
+      Environment:
+        Variables:
+          CATALOG_FUNCTION_NAME: !Sub "poc-vision-api-${Environment}-catalog-api"
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:poc-vision-api-${Environment}-catalog-api"
+
+  CatalogApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "poc-vision-api-${Environment}-catalog-api"
+      CodeUri: ../build/catalog-api.zip
+      Handler: bootstrap
+      Events:
+        GetProviders:
+          Type: Api
+          Properties:
+            RestApiId: !Ref VisionApi
+            Path: /providers
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
+Outputs:
+
+  AnalyzeEndpoint:
+    Description: Endpoint para analizar imagenes via POST
+    Value: !Sub "https://${VisionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/analyze"
+    Export:
+      Name: !Sub "${AWS::StackName}-AnalyzeEndpoint"
+
+  CatalogEndpoint:
+    Description: Endpoint para consultar catalogo de proveedores
+    Value: !Sub "https://${VisionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/providers"
+    Export:
+      Name: !Sub "${AWS::StackName}-CatalogEndpoint"
+
+  ApiKeyValue:
+    Description: Valor de la API Key
+    Value: !Ref CatalogApiToken
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiKey"
+
+  ApiKeyId:
+    Description: ID de la API Key
+    Value: !Ref VisionApiKey
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiKeyId"
+
+  DynamoDBTableName:
+    Description: Nombre tabla DynamoDB para resultados
+    Value: !Ref ResultsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-ResultsTable"
+
+  BedrockModelUsed:
+    Description: Modelo multimodal de Bedrock utilizado
+    Value: !Ref BedrockModelId
+    Export:
+      Name: !Sub "${AWS::StackName}-BedrockModel"
