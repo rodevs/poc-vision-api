@@ -323,8 +323,8 @@ Al finalizar el despliegue, se mostraran los endpoints y credenciales:
 ```
 Deployment completed successfully
 ==================================
-Analyze Endpoint: https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze
-Catalog Endpoint: https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/providers
+Analyze Endpoint: https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze
+Catalog Endpoint: https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/catalog/providers
 API Key: poc-vision-api-token-2026
 Bedrock Model: amazon.nova-lite-v1:0
 ```
@@ -337,8 +337,8 @@ Bedrock Model: amazon.nova-lite-v1:0
 
 | Metodo | Endpoint | Descripcion | Autenticacion |
 |--------|----------|-------------|---------------|
-| POST | `/analyze` | Analiza una imagen de recibo | API Key requerida |
-| GET | `/providers` | Lista el catalogo de proveedores | API Key requerida |
+| POST | `/ai/analyze` | Analiza una imagen de recibo | API Key requerida |
+| GET | `/catalog/providers` | Lista el catalogo de proveedores | API Key requerida |
 
 ### Autenticacion
 
@@ -348,7 +348,7 @@ Todas las peticiones requieren el header `x-api-key` con el token configurado:
 x-api-key: poc-vision-api-token-2026
 ```
 
-### POST /analyze
+### POST /ai/analyze
 
 Analiza una imagen de recibo y retorna la identificacion del proveedor.
 
@@ -423,7 +423,7 @@ Analiza una imagen de recibo y retorna la identificacion del proveedor.
 }
 ```
 
-### GET /providers
+### GET /catalog/providers
 
 Lista todos los proveedores de servicios registrados.
 
@@ -469,7 +469,7 @@ Lista todos los proveedores de servicios registrados.
 IMAGE_BASE64=$(base64 -w 0 recibo.jpg)
 
 # Enviar peticion
-curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze" \
+curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze" \
     -H "x-api-key: poc-vision-api-token-2026" \
     -H "Content-Type: application/json" \
     -d "{\"image_base64\":\"$IMAGE_BASE64\",\"media_type\":\"image/jpeg\"}"
@@ -478,7 +478,7 @@ curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyz
 ### cURL - Enviar imagen como multipart/form-data
 
 ```bash
-curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze" \
+curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze" \
     -H "x-api-key: poc-vision-api-token-2026" \
     -F "image=@recibo.jpg"
 ```
@@ -486,7 +486,7 @@ curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyz
 ### PowerShell
 
 ```powershell
-$endpoint = "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze"
+$endpoint = "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze"
 $apiKey = "poc-vision-api-token-2026"
 
 # Leer y codificar imagen
@@ -513,7 +513,7 @@ $response | ConvertTo-Json -Depth 10
 import base64
 import requests
 
-endpoint = "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze"
+endpoint = "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze"
 api_key = "poc-vision-api-token-2026"
 
 # Leer y codificar imagen
@@ -541,7 +541,7 @@ print(response.json())
 ```javascript
 const fs = require('fs');
 
-const endpoint = 'https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze';
+const endpoint = 'https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze';
 const apiKey = 'poc-vision-api-token-2026';
 
 // Leer y codificar imagen
@@ -579,7 +579,7 @@ import (
 )
 
 func main() {
-    endpoint := "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/Prod/analyze"
+    endpoint := "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze"
     apiKey := "poc-vision-api-token-2026"
 
     // Leer y codificar imagen
