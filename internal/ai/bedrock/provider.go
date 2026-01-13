@@ -65,14 +65,12 @@ func (p *Provider) SupportsToolUse() bool {
 	return true
 }
 
-// AnalyzeImageWithTools implementa el análisis de imagen con Tool Use
+// AnalyzeImageWithTools implementa el análisis de imagen/documento con Tool Use
 func (p *Provider) AnalyzeImageWithTools(ctx context.Context, request ai.AnalysisRequest) (*ai.AnalysisResponse, error) {
-	imageBytes, err := base64.StdEncoding.DecodeString(request.ImageBase64)
+	contentBytes, err := base64.StdEncoding.DecodeString(request.ImageBase64)
 	if err != nil {
 		return nil, fmt.Errorf("invalid base64: %w", err)
 	}
-
-	imageFormat := p.mapImageFormat(request.MediaType)
 
 	systemPrompt := request.SystemPrompt
 	if systemPrompt == "" {
@@ -84,18 +82,39 @@ func (p *Provider) AnalyzeImageWithTools(ctx context.Context, request ai.Analysi
 		userPrompt = ai.GetDefaultUserPrompt()
 	}
 
+	// Construir el bloque de contenido según el tipo de media
+	var contentBlock types.ContentBlock
+	if request.MediaType == "application/pdf" {
+		// PDF se maneja como documento
+		contentBlock = &types.ContentBlockMemberDocument{
+			Value: types.DocumentBlock{
+				Format: types.DocumentFormatPdf,
+				Name:   aws.String("document"),
+				Source: &types.DocumentSourceMemberBytes{
+					Value: contentBytes,
+				},
+			},
+		}
+		log.Printf("[Bedrock] Processing PDF document (%d bytes)", len(contentBytes))
+	} else {
+		// Imágenes se manejan normalmente
+		imageFormat := p.mapImageFormat(request.MediaType)
+		contentBlock = &types.ContentBlockMemberImage{
+			Value: types.ImageBlock{
+				Format: imageFormat,
+				Source: &types.ImageSourceMemberBytes{
+					Value: contentBytes,
+				},
+			},
+		}
+		log.Printf("[Bedrock] Processing image (%s, %d bytes)", request.MediaType, len(contentBytes))
+	}
+
 	messages := []types.Message{
 		{
 			Role: types.ConversationRoleUser,
 			Content: []types.ContentBlock{
-				&types.ContentBlockMemberImage{
-					Value: types.ImageBlock{
-						Format: imageFormat,
-						Source: &types.ImageSourceMemberBytes{
-							Value: imageBytes,
-						},
-					},
-				},
+				contentBlock,
 				&types.ContentBlockMemberText{
 					Value: userPrompt,
 				},

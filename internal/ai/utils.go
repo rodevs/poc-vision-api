@@ -117,6 +117,8 @@ func NormalizeMediaType(mediaType string) ImageFormat {
 		return ImageFormatGIF
 	case "image/webp", "webp":
 		return ImageFormatWEBP
+	case "application/pdf", "pdf":
+		return DocumentFormatPDF
 	default:
 		return ImageFormatJPEG
 	}

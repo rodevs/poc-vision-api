@@ -154,10 +154,11 @@ func (h *Handler) processImage(ctx context.Context, req AnalyzeRequest) (*Analys
 	}
 
 	validMediaTypes := map[string]bool{
-		"image/jpeg": true,
-		"image/png":  true,
-		"image/gif":  true,
-		"image/webp": true,
+		"image/jpeg":      true,
+		"image/png":       true,
+		"image/gif":       true,
+		"image/webp":      true,
+		"application/pdf": true,
 	}
 	if !validMediaTypes[req.MediaType] {
 		return nil, fmt.Errorf("unsupported media type: %s", req.MediaType)
@@ -352,11 +353,16 @@ func (h *Handler) detectMediaType(filename string, data []byte) string {
 			return "image/gif"
 		case data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46:
 			return "image/webp"
+		case data[0] == 0x25 && data[1] == 0x50 && data[2] == 0x44 && data[3] == 0x46:
+			return "application/pdf"
 		}
 	}
 
 	detected := http.DetectContentType(data)
 	if strings.HasPrefix(detected, "image/") {
+		return detected
+	}
+	if detected == "application/pdf" {
 		return detected
 	}
 
@@ -370,6 +376,8 @@ func (h *Handler) detectMediaType(filename string, data []byte) string {
 		return "image/gif"
 	case strings.HasSuffix(filename, ".webp"):
 		return "image/webp"
+	case strings.HasSuffix(filename, ".pdf"):
+		return "application/pdf"
 	}
 
 	return "image/jpeg"

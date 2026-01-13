@@ -110,6 +110,7 @@ const (
 	ImageFormatPNG  ImageFormat = "image/png"
 	ImageFormatGIF  ImageFormat = "image/gif"
 	ImageFormatWEBP ImageFormat = "image/webp"
+	DocumentFormatPDF ImageFormat = "application/pdf"
 )
 
 // ProviderConfig contiene la configuración común para proveedores

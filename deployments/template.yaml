@@ -75,6 +75,7 @@ Resources:
         - "image/png"
         - "image/gif"
         - "image/webp"
+        - "application/pdf"
       Cors:
         AllowOrigin: "'*'"
         AllowHeaders: "'Content-Type,x-api-key'"

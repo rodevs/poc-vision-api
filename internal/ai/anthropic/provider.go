@@ -76,7 +76,7 @@ type message struct {
 type contentPart struct {
 	Type      string       `json:"type"`
 	Text      string       `json:"text,omitempty"`
-	Source    *imageSource `json:"source,omitempty"`
+	Source    *mediaSource `json:"source,omitempty"`
 	ID        string       `json:"id,omitempty"`
 	Name      string       `json:"name,omitempty"`
 	Input     interface{}  `json:"input,omitempty"`
@@ -85,7 +85,7 @@ type contentPart struct {
 	IsError   bool         `json:"is_error,omitempty"`
 }
 
-type imageSource struct {
+type mediaSource struct {
 	Type      string `json:"type"`
 	MediaType string `json:"media_type"`
 	Data      string `json:"data"`
@@ -112,7 +112,7 @@ type usage struct {
 	OutputTokens int `json:"output_tokens"`
 }
 
-// AnalyzeImageWithTools implementa el análisis de imagen con Tool Use
+// AnalyzeImageWithTools implementa el análisis de imagen/documento con Tool Use
 func (p *Provider) AnalyzeImageWithTools(ctx context.Context, request ai.AnalysisRequest) (*ai.AnalysisResponse, error) {
 	systemPrompt := request.SystemPrompt
 	if systemPrompt == "" {
@@ -124,18 +124,37 @@ func (p *Provider) AnalyzeImageWithTools(ctx context.Context, request ai.Analysi
 		userPrompt = ai.GetDefaultUserPrompt()
 	}
 
+	// Construir el contenido según el tipo de media
+	var mediaPart contentPart
+	if request.MediaType == "application/pdf" {
+		// PDF se maneja como documento
+		mediaPart = contentPart{
+			Type: "document",
+			Source: &mediaSource{
+				Type:      "base64",
+				MediaType: request.MediaType,
+				Data:      request.ImageBase64,
+			},
+		}
+		log.Printf("[Anthropic] Processing PDF document")
+	} else {
+		// Imágenes se manejan normalmente
+		mediaPart = contentPart{
+			Type: "image",
+			Source: &mediaSource{
+				Type:      "base64",
+				MediaType: request.MediaType,
+				Data:      request.ImageBase64,
+			},
+		}
+		log.Printf("[Anthropic] Processing image (%s)", request.MediaType)
+	}
+
 	messages := []message{
 		{
 			Role: "user",
 			Content: []contentPart{
-				{
-					Type: "image",
-					Source: &imageSource{
-						Type:      "base64",
-						MediaType: request.MediaType,
-						Data:      request.ImageBase64,
-					},
-				},
+				mediaPart,
 				{
 					Type: "text",
 					Text: userPrompt,

@@ -364,15 +364,16 @@ Analiza una imagen de recibo y retorna la identificacion del proveedor.
 
 **Request (multipart/form-data):**
 
-- `image` o `file`: Archivo de imagen
+- `image` o `file`: Archivo de imagen o PDF
 - `request_id` (opcional): ID de solicitud personalizado
 
-**Formatos de imagen soportados:**
+**Formatos soportados:**
 
 - `image/jpeg`
 - `image/png`
 - `image/gif`
 - `image/webp`
+- `application/pdf`
 
 **Response exitosa:**
 
@@ -481,6 +482,14 @@ curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/anal
 curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze" \
     -H "x-api-key: poc-vision-api-token-2026" \
     -F "image=@recibo.jpg"
+```
+
+### cURL - Enviar PDF como multipart/form-data
+
+```bash
+curl -X POST "https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/api/ai/analyze" \
+    -H "x-api-key: poc-vision-api-token-2026" \
+    -F "file=@factura.pdf"
 ```
 
 ### PowerShell
