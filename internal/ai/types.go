@@ -106,10 +106,10 @@ type ToolResult struct {
 type ImageFormat string
 
 const (
-	ImageFormatJPEG ImageFormat = "image/jpeg"
-	ImageFormatPNG  ImageFormat = "image/png"
-	ImageFormatGIF  ImageFormat = "image/gif"
-	ImageFormatWEBP ImageFormat = "image/webp"
+	ImageFormatJPEG   ImageFormat = "image/jpeg"
+	ImageFormatPNG    ImageFormat = "image/png"
+	ImageFormatGIF    ImageFormat = "image/gif"
+	ImageFormatWEBP   ImageFormat = "image/webp"
 	DocumentFormatPDF ImageFormat = "application/pdf"
 )
 
